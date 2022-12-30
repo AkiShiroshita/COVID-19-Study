@@ -1,0 +1,25 @@
+# files by git_vaccinated etc.
+.httr-oauth
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+*.Rproj
+# built files
+*.xlsx
+*.csv
+*.txt
+*.html
+*.pdf
+*.log
+# folders
+#**/input
+#**/output
+# junk files created by Latex
+ *.aux
+ *.out
+ *.bbl
+ *.ent
+# exceptions
+#!file_name.csv

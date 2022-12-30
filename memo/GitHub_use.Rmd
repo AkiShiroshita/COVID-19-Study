@@ -1,0 +1,112 @@
+---
+title: "GitHub use"
+author: "Akihiro Shiroshita"
+date: "2021/10/16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Hot to use GitHub with R studio    
+
+### Set global setting.  
+
+GitHub -> R studio  
+
+```
+library(usethis)
+usethis::use_git_config(user.name = "AkiShiroshita", user.email = "akihirokun8@gmail.com")
+usethis::git_sitrep()
+usethis::git_vaccinate()
+usethis::create_github_token()
+gitcreds::gitcreds_set()  # paste your PAT here
+usethis::git_remotes()
+```
+
+R studio -> GitHub  
+
+```
+usethis::use_git() # initialize the Git repository
+usethis::use_github() # local to GitHub
+```
+
+Git Large File Strage  
+
+```
+git lfs install
+git lfs track output/file.dat.gz # this will create a .gitattributes file
+git add input/file.dat.gz .gitattributes
+git commit -m "large file test"
+git push
+```
+
+### Push and Pull  
+
+First, don't forget "pull".  
+Do not commit large files (100mb).  
+Use "pull request" rather than branching".  
+linking to the "issue".  
+
+### Undo  
+
+1. Not commit yet -> check out the most recent commit.  
+
+```
+git checkout -- analysis.Rmd
+```
+Or right click the file and "revert"
+
+2. Already committed but not push -> remove all intervening commits by going back to the previous commit  
+
+```
+git log --oneline
+git reset <previous commit>
+```
+
+3. Already pushed -> revert the commit   
+
+```
+git diff e1e5720 d794860
+git revert d794860
+git diff HEAD~1 HEAD
+```
+
+4. Remove large files  
+
+```
+git rm --cached input/file.dat.gz # remove the file
+git commit --amend -CHEAD # amend the previous commit to remove the file
+git reset HEAD~1 # alternative way: rest the branch back one
+```
+
+## Command line  
+
+```
+git clone <repository address>
+git status
+git diff analysis.Rmd
+git add analysis.Rmd silly_script.R
+git commit -m "some changes"
+git remote -v
+git branch # check branches
+git push <repository name> <branch name>
+git push origin main
+git push
+git pull
+git pull origin main
+git init # initialize the Git repository
+git add *
+git commit -m "initial commit"
+git remote add origin <address>
+git branch -M main
+git push -u origin main
+git branch
+git checkout new_graph # switch to a different branch
+git checkout -b custom_theme # create a new branch
+git push -u origin custom_theme #push this branch to the remote repository
+git merge custom_theme # merge <branch name> to merge the commits from my branch into the main branch
+git branch -d <branchname> # delete the blanch
+```
+
