@@ -1,0 +1,203 @@
+---
+title: "Dr. Misawa Study"
+author: "Akihiro Shiroshita"
+date: "`r Sys.time()`"
+output: 
+    word_document:
+      toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.height = 4,
+	fig.pos = "t",
+	message = FALSE,
+	warning = FALSE,
+	dpi = 350,
+	out.extra = ""
+)
+packages = c("devtools",
+             "usethis",
+             "here",
+             "readr",
+             "readxl",
+             "expss",
+             "tidyverse",
+             "tidylog",
+             "lubridate",
+             "ggplot2",
+             "RColorBrewer",
+             "ggplotgui",
+             "ggthemes",
+             "arsenal",
+             "stats",
+             "epitools",
+             "DescTools",
+             "epiR",
+             "RVAideMemoire",
+             "tableone",
+             "flextable",
+             "huxtable",
+             "naniar",
+             "VIM",
+             "margins",
+             "modmarg",
+             "broom",
+             "aod",
+             "fitdistrplus",
+             "rms",
+             "Hmisc",
+             "mice",
+             "mitools",
+             "margins",
+             "geepack",
+             "multcomp",
+             "WeightIt",
+             "cobalt",
+             "MatchIt")
+package.check <- lapply(packages, FUN = function(x){
+  if (!require(x, character.only = TRUE)){
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+
+```
+
+# Data cleaning  
+
+```{r}
+# filmarray data
+film_array <- read_csv(here("input/film_array.csv"), 
+    locale = locale(encoding = "SHIFT-JIS"))
+film_array %>% glimpse()
+film_array %>% colnames()
+
+film_array_cleaned <- film_array %>% 
+  rename(id = "患者ID",
+         date = "依頼日",
+         sex = "性別",
+         age = "年齢",
+         setting = "入外",
+         deparment = "診療科",
+         covid_19 = "結果1",
+         human_corona_229e = "結果2",
+         human_corona_hku1 = "結果3",
+         human_corona_nl63 = "結果4",
+         human_corona_oc43 = "結果5",
+         flu_a = "結果6",
+         flu_a_h1 = "結果7",
+         flu_a_h1_09 = "結果8",
+         flu_a_h3 = "結果9") %>% 
+  mutate(sex = if_else(sex == "女性", 0, 1),
+         setting = if_else(setting == "外来", 0, 1),
+         covid_19 = case_when(covid_19 == "陽性" ~ "1",
+                              covid_19 == "検出せず" ~ "0",
+                              covid_19 == "検査中止" | is.na(covid_19) | covid_19 == "検体取消" ~ NA_character_),
+         human_corona_229e = case_when(human_corona_229e == "陽性" ~ "1",
+                              human_corona_229e == "検出せず" ~ "0",
+                              human_corona_229e == "検査中止" | is.na(human_corona_229e) | human_corona_229e == "検体取消" ~ NA_character_),
+         human_corona_hku1 = case_when(human_corona_hku1 == "陽性" ~ "1",
+                              human_corona_hku1 == "検出せず" ~ "0",
+                              human_corona_hku1 == "検査中止" | is.na(human_corona_hku1) | human_corona_hku1 == "検体取消" ~ NA_character_),
+         human_corona_nl63 = case_when(human_corona_nl63 == "陽性" ~ "1",
+                              human_corona_nl63 == "検出せず" ~ "0",
+                              human_corona_nl63 == "検査中止" | is.na(human_corona_nl63) | human_corona_nl63 == "検体取消" ~ NA_character_),
+         human_corona_oc43 = case_when(human_corona_oc43 == "陽性" ~ "1",
+                              human_corona_oc43 == "検出せず" ~ "0",
+                              human_corona_oc43 == "検査中止" | is.na(human_corona_oc43) | human_corona_oc43 == "検体取消" ~ NA_character_),
+         flu_a = case_when(flu_a == "陽性" ~ "1",
+                              flu_a == "検出せず" ~ "0",
+                              flu_a == "検査中止" | is.na(flu_a) | flu_a == "検体取消" ~ NA_character_),
+         flu_a_h1 = case_when(flu_a_h1 == "陽性" ~ "1",
+                              flu_a_h1 == "検出せず" ~ "0",
+                              flu_a_h1 == "検査中止" | is.na(flu_a_h1) | flu_a_h1 == "検体取消" ~ NA_character_),
+         flu_a_h1_09 = case_when(flu_a_h1_09 == "陽性" ~ "1",
+                              flu_a_h1_09 == "検出せず" ~ "0",
+                              flu_a_h1_09 == "検査中止" | is.na(flu_a_h1_09) | flu_a_h1_09 == "検体取消" ~ NA_character_),
+         flu_a_h3 = case_when(flu_a_h3 == "陽性" ~ "1",
+                              flu_a_h3 == "検出せず" ~ "0",
+                              flu_a_h3 == "検査中止" | is.na(flu_a_h3) | flu_a_h3 == "検体取消" ~ NA_character_)) %>% 
+  dplyr::select((-30:-51))
+
+policy <- read_excel(here("input/policy.xlsx"))
+
+request <- read_excel(here("input/request.xlsx"))
+
+total_data <- read_excel(here("input/total_data.xlsx"), 
+    sheet = "提出用")
+
+total_data %>% glimpse()
+total_data %>% colnames()
+
+total_data_cleaned <- total_data %>% 
+  mutate(date = as.numeric(`No.of week`))
+
+```
+
+# Time trend of COVID-19 and other viruses  
+
+```{r}
+cols <- brewer.pal(6, "Paired")
+
+emr_state1_start <-  12 #2021/01/14
+emr_state1_end <- 18 #2021/02/28
+manbo1_state_start <- 23 #2021/04/05
+manbo1_state_end <- 25 #2021/04/24
+emr_state2_start <- 25 #2021/04/25
+emr_state2_end <- 33 #2021/06/20
+manbo2_start <- 33 #2021/06/21
+manbo2_end <- 39 #2021/08/01
+emr_state3_start <- 39 #2021/08/02
+emr_state3_end <- 48 #2021/09/30
+manbo3_start <- 65 ##2022/01/27
+manbo3_end <- 70 #2022/03/02
+
+
+graph <- ggplot() +
+  geom_line(data = total_data_cleaned, aes(x = date, y = `SARS-COV2（％）`, color = "red", group = 1)) +
+  geom_point(data = total_data_cleaned, aes(x = date, y = `SARS-COV2（％）`, color = "red")) +
+  geom_line(data = total_data_cleaned, aes(x = date, y = `RhinoEntero（％）`, color = "blue", group = 1)) +
+  geom_point(data = total_data_cleaned, aes(x = date, y = `RhinoEntero（％）`, color = "blue")) + 
+  scale_color_manual(values=cols[c(2,6)],
+                     name = "Legend",
+                     breaks = c("blue", "red"),
+                     labels = c("Rhino-entero virus", "SARS-COV-2")) +
+  geom_rect(aes(xmin=emr_state1_start,
+                  xmax = emr_state1_end,
+                  ymin = -Inf,
+                  ymax = Inf), fill = 'pink', alpha = 0.5) +
+  geom_rect(aes(xmin=manbo1_state_start,
+                  xmax = manbo1_state_end,
+                  ymin = -Inf,
+                  ymax = Inf), fill = 'green', alpha = 0.1) +
+  geom_rect(aes(xmin=emr_state2_start,
+                  xmax = emr_state2_end,
+                  ymin = -Inf,
+                  ymax = Inf), fill = 'pink', alpha = 0.5) +
+  geom_rect(aes(xmin=manbo2_start,
+                  xmax = manbo2_end,
+                  ymin = -Inf,
+                  ymax = Inf), fill = 'green', alpha = 0.1) +
+  geom_rect(aes(xmin=emr_state3_start,
+                  xmax = emr_state3_end,
+                  ymin = -Inf,
+                  ymax = Inf), fill = 'pink', alpha = 0.5) +
+  geom_rect(aes(xmin=manbo3_start,
+                  xmax = manbo3_start,
+                  ymin = -Inf,
+                  ymax = Inf), fill = 'green', alpha = 0.1) +
+  labs(x = 'Weeks since November 2nd, 2020', y = 'Incidence (%)') +
+  theme_classic() +
+  theme(
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 6),
+    text = element_text(family = 'Helvetica'),
+    axis.ticks.y = element_blank(),
+    axis.text.x = element_text(angle = 90, hjust = 1),
+  ) 
+  
+graph
+```
+
